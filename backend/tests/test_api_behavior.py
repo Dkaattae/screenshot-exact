@@ -224,9 +224,7 @@ class TestJobFailures:
         assert pieces[wardrobe["bottom"]["id"]].photo_key == "inferred-back.jpg"
         assert pieces[wardrobe["top"]["id"]].inferred is False
 
-    def test_a_job_renders_the_state_it_was_created_with(
-        self, client, auth, outfit, monkeypatch
-    ):
+    def test_a_job_renders_the_state_it_was_created_with(self, client, auth, outfit, monkeypatch):
         states = []
         monkeypatch.setattr(
             jobs, "render_try_on", lambda request: states.append(request.state) or "r.jpg"
