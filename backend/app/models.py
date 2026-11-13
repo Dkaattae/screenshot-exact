@@ -96,9 +96,7 @@ class Job(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    outfit_id: Mapped[str] = mapped_column(
-        ForeignKey("outfits.id", ondelete="CASCADE"), index=True
-    )
+    outfit_id: Mapped[str] = mapped_column(ForeignKey("outfits.id", ondelete="CASCADE"), index=True)
     outfit_version: Mapped[int] = mapped_column(Integer)
     status: Mapped[str] = mapped_column(String(20), default="queued")
     # {view: {"status", "key", "inferred_item_ids"}}; "key" is a storage key, not a URL.

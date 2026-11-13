@@ -44,7 +44,9 @@ class LocalStorage:
 
     def url(self, key: str) -> str:
         expires = int(time.time()) + self._ttl
-        return f"{self._base_url}/files/{key}?expires={expires}&signature={self._sign(key, expires)}"
+        return (
+            f"{self._base_url}/files/{key}?expires={expires}&signature={self._sign(key, expires)}"
+        )
 
     def url_or_none(self, key: str | None) -> str | None:
         return self.url(key) if key else None

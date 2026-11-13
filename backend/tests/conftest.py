@@ -19,7 +19,7 @@ def settings(tmp_path) -> Settings:
     return Settings(
         database_url=f"sqlite:///{tmp_path}/test.db",
         storage_dir=str(tmp_path / "files"),
-        secret_key="test-secret",
+        secret_key="test-secret-that-is-at-least-32-bytes-long",
         public_base_url="http://testserver",
     )
 

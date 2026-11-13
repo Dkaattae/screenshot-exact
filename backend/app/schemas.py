@@ -172,9 +172,7 @@ class OutfitPatch(Strict):
     @model_validator(mode="before")
     @classmethod
     def no_nulls(cls, data: Any) -> Any:
-        return _reject_nulls(
-            data, ("favorite", "body", "background_id", "base", "style_notes")
-        )
+        return _reject_nulls(data, ("favorite", "body", "background_id", "base", "style_notes"))
 
     @model_validator(mode="after")
     def not_empty(self) -> "OutfitPatch":

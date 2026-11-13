@@ -47,7 +47,11 @@ def save_body(
         profile = BodyProfile(user_id=user.id)
         db.add(profile)
     now = utcnow()
-    profile.front_key, profile.side_key, profile.back_key = keys["front"], keys["side"], keys["back"]
+    profile.front_key, profile.side_key, profile.back_key = (
+        keys["front"],
+        keys["side"],
+        keys["back"],
+    )
     profile.height_cm = height_cm
     profile.measurements = parsed
     profile.consent_at = now

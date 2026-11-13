@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DEV_SECRET = "dev-only-change-me"
+DEV_SECRET = "dev-only-insecure-secret-change-me-before-deploying"
 
 
 class Settings(BaseSettings):

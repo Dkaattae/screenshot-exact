@@ -90,7 +90,9 @@ def test_backgrounds_list_presets_and_uploads(client, auth):
 def test_uploaded_backgrounds_are_private(client, auth):
     from tests.conftest import register
 
-    client.post("/users/me/backgrounds", headers=auth, files={"file": jpeg()}, data={"name": "Mine"})
+    client.post(
+        "/users/me/backgrounds", headers=auth, files={"file": jpeg()}, data={"name": "Mine"}
+    )
     other = register(client, "other@example.com")
     names = [b["name"] for b in client.get("/users/me/backgrounds", headers=other).json()]
     assert "Mine" not in names

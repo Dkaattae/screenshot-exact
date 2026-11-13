@@ -28,7 +28,10 @@ def outfit_item_ids(state: dict[str, Any]) -> list[str]:
         if base["mode"] == "one_piece"
         else [base.get("top_id"), base.get("bottom_id")]
     )
-    ids += [(state.get("outer") or {}).get("item_id"), (state.get("accessory") or {}).get("item_id")]
+    ids += [
+        (state.get("outer") or {}).get("item_id"),
+        (state.get("accessory") or {}).get("item_id"),
+    ]
     return [item_id for item_id in ids if item_id]
 
 
@@ -60,16 +63,17 @@ def validation_errors(db: Session, user: User, state: OutfitState) -> list[str]:
         if background is None or (not background.is_preset and background.user_id != user.id):
             errors.append("That background was not found.")
 
-    expected = {
-        getattr(base, field): (slot, label)
+    # A list, not a dict: one item chosen for two fields must be checked against both.
+    expected = [
+        (getattr(base, field), slot, label)
         for field, slot, label in _SLOT_FIELDS
         if getattr(base, field, None)
-    }
+    ]
     if state.outer:
-        expected[state.outer.item_id] = ("outer", "outer layer")
+        expected.append((state.outer.item_id, "outer", "outer layer"))
     if state.accessory:
-        expected[state.accessory.item_id] = ("accessory", "accessory")
-    for item_id, (slot, label) in expected.items():
+        expected.append((state.accessory.item_id, "accessory", "accessory"))
+    for item_id, slot, label in expected:
         item = db.get(Item, item_id)
         if item is None or item.user_id != user.id:
             errors.append(f"The chosen {label} is not in your wardrobe.")
@@ -92,17 +96,15 @@ def edit_state(state: dict[str, Any], message: str) -> tuple[dict[str, Any], str
     return result, summary
 
 
-def reused_layers(
-    previous: dict[str, Any] | None, current: dict[str, Any]
-) -> list[dict[str, Any]]:
+def reused_layers(previous: dict[str, Any] | None, current: dict[str, Any]) -> list[dict[str, Any]]:
     """Which layers a new job can take from the previous finished job's cache."""
     common = previous is not None and all(
         previous.get(key) == current.get(key)
         for key in ("base", "body", "background_id", "style_notes")
     )
     outer = common and previous is not None and previous.get("outer") == current.get("outer")
-    accessory = outer and previous is not None and previous.get("accessory") == current.get(
-        "accessory"
+    accessory = (
+        outer and previous is not None and previous.get("accessory") == current.get("accessory")
     )
     return [
         {"layer": "base", "reused": common},

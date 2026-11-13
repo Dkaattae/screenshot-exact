@@ -81,7 +81,8 @@ def test_expired_token_is_rejected(client, settings):
 def test_token_signed_with_another_key_is_rejected(client):
     headers = register(client)
     user_id = client.get("/auth/me", headers=headers).json()["id"]
-    token = jwt.encode({"sub": user_id}, "some-other-secret", algorithm="HS256")
+    other_key = "another-secret-that-is-also-32-bytes-long"
+    token = jwt.encode({"sub": user_id}, other_key, algorithm="HS256")
     response = client.get("/users/me/items", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 401
 
