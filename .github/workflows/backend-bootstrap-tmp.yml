@@ -1,0 +1,30 @@
+# TEMPORARY: creates uv.lock, applies ruff fixes and runs the tests, then uploads
+# the results. Delete this file before merging.
+name: Backend bootstrap (temporary)
+on:
+  push:
+    branches: [backend]
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv lock
+      - run: uv sync
+      - run: uv run ruff format .
+      - run: uv run ruff check . --fix > ../ruff-report.txt 2>&1 || true
+      - run: uv run pytest -q > ../pytest-report.txt 2>&1 || true
+      - run: git add -N uv.lock && git diff --binary > ../backend-fix.patch
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backend-bootstrap
+          path: |
+            backend-fix.patch
+            ruff-report.txt
+            pytest-report.txt
