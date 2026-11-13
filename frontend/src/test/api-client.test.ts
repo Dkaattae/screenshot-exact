@@ -44,7 +44,7 @@ describe('api client', () => {
   it('sends JSON bodies for outfit edits', async () => {
     fetchMock.mockReturnValue(reply({ outfit: {}, change_summary: 'Shirt tucked in.' }));
     const result = await api.editOutfit('o1', 'tuck the shirt');
-    const [url, init] = fetchMock.mock.calls[0];
+    const [url, init] = fetchMock.mock.calls[0]!;
     expect(url).toBe(`${API_BASE_URL}/users/me/outfits/o1/edit`);
     expect(init.method).toBe('POST');
     expect(init.headers).toEqual({ 'Content-Type': 'application/json' });

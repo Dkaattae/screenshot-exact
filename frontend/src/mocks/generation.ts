@@ -31,7 +31,7 @@ export function inferItemView(item: Item, view: View): string {
 
 /** DUMMY: stands in for the model that renders the outfit on the body. */
 export function renderTryOn(view: View, state: OutfitState, pieces: Piece[]): string {
-  const lines = [`${view[0].toUpperCase()}${view.slice(1)} view`, 'Mock try-on', ...pieces.map((p) => p.item.name)];
+  const lines = [`${view.charAt(0).toUpperCase()}${view.slice(1)} view`, 'Mock try-on', ...pieces.map((p) => p.item.name)];
   if (state.base.mode === 'top_bottom' && state.base.tucked) lines.push('Tucked');
   if (state.outer) lines.push(state.outer.open ? 'Outer open' : 'Outer closed');
   return placeholder(lines);
