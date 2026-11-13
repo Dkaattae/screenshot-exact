@@ -1,0 +1,31 @@
+# TEMPORARY: runs the formatter and ESLint autofix and uploads the result as a patch.
+# Delete this file before merging.
+name: Lint autofix (temporary)
+on:
+  push:
+    branches: [add-lint]
+jobs:
+  autofix:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run format
+      - run: bunx eslint . --fix || true
+      - run: bun run lint > ../lint-report.txt 2>&1 || true
+      - run: git diff --binary > ../lint-fix.patch
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lint-autofix
+          path: |
+            lint-fix.patch
+            lint-report.txt
