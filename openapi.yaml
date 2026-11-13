@@ -1,0 +1,721 @@
+openapi: 3.1.0
+info:
+  title: Virtual Try-On API
+  version: 1.0.0
+  description: |
+    Contract for the Virtual Try-On app (v1 shell). The frontend's MSW mock
+    implements this contract, and the FastAPI backend will replace it.
+
+    Conventions:
+    - IDs are opaque strings. Clients must never parse or construct them.
+    - Timestamps are ISO 8601 in UTC.
+    - Image URLs may be signed and may expire. Always use the URLs from the
+      latest response. If an image fails to load, refetch the parent resource once.
+    - Every error response uses the `ApiError` shape.
+    - v1 has a single user and no auth. The user is `me`. User-scoped paths
+      include `/users/{user_id}/` so that auth can be added later.
+    - List endpoints return plain arrays in v1. They may later return
+      `{ items, next_cursor }`. The frontend client already accepts both.
+servers:
+  - url: "{baseUrl}"
+    description: Set by VITE_API_BASE_URL on the frontend.
+    variables:
+      baseUrl:
+        default: /api/mock
+
+tags:
+  - name: Profile
+  - name: Backgrounds
+  - name: Wardrobe
+  - name: Outfits
+  - name: Generation
+
+paths:
+  /users/{user_id}/profile:
+    parameters: [{ $ref: "#/components/parameters/UserId" }]
+    get:
+      tags: [Profile]
+      operationId: getProfile
+      summary: Get the user's body profile
+      responses:
+        "200":
+          description: The profile. `body` is null when the user has not saved one.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [body]
+                properties:
+                  body:
+                    oneOf:
+                      - $ref: "#/components/schemas/BodyProfile"
+                      - type: "null"
+
+  /users/{user_id}/body:
+    parameters: [{ $ref: "#/components/parameters/UserId" }]
+    put:
+      tags: [Profile]
+      operationId: saveBody
+      summary: Create or replace the user's body photos and measurements
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [front, side, back, consent]
+              properties:
+                front: { type: string, format: binary }
+                side: { type: string, format: binary }
+                back: { type: string, format: binary }
+                height_cm:
+                  type: number
+                  exclusiveMinimum: 0
+                measurements:
+                  description: JSON-encoded `Measurements` object.
+                  type: string
+                consent:
+                  description: Must be "true". Body photos are used only to generate try-ons.
+                  type: string
+                  enum: ["true"]
+            encoding:
+              measurements: { contentType: application/json }
+              front: { contentType: "image/jpeg, image/png, image/webp" }
+              side: { contentType: "image/jpeg, image/png, image/webp" }
+              back: { contentType: "image/jpeg, image/png, image/webp" }
+      responses:
+        "200":
+          description: The saved profile.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BodyProfile" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [Profile]
+      operationId: deleteBody
+      summary: Delete the user's body data
+      responses:
+        "204": { description: Deleted. }
+
+  /bodies/defaults:
+    get:
+      tags: [Profile]
+      operationId: listDefaultBodies
+      summary: List the default bodies used when the user has no profile
+      responses:
+        "200":
+          description: Default bodies.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/DefaultBody" }
+
+  /users/{user_id}/backgrounds:
+    parameters: [{ $ref: "#/components/parameters/UserId" }]
+    get:
+      tags: [Backgrounds]
+      operationId: listBackgrounds
+      summary: List preset and user-uploaded backgrounds
+      responses:
+        "200":
+          description: Backgrounds.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Background" }
+    post:
+      tags: [Backgrounds]
+      operationId: uploadBackground
+      summary: Upload a background
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+                name: { type: string }
+      responses:
+        "201":
+          description: The new background.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Background" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+
+  /users/{user_id}/items:
+    parameters: [{ $ref: "#/components/parameters/UserId" }]
+    get:
+      tags: [Wardrobe]
+      operationId: listItems
+      summary: List wardrobe items, optionally filtered by slot
+      parameters:
+        - name: slot
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/Slot" }
+      responses:
+        "200":
+          description: Items.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Item" }
+    post:
+      tags: [Wardrobe]
+      operationId: createItem
+      summary: Add a wardrobe item
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [front, slot, name]
+              properties:
+                front: { type: string, format: binary }
+                back:
+                  description: Optional. Without it, the back view is inferred.
+                  type: string
+                  format: binary
+                slot: { $ref: "#/components/schemas/Slot" }
+                name: { type: string, minLength: 1 }
+                measurements:
+                  description: JSON-encoded `Measurements` object.
+                  type: string
+            encoding:
+              measurements: { contentType: application/json }
+              front: { contentType: "image/jpeg, image/png, image/webp" }
+              back: { contentType: "image/jpeg, image/png, image/webp" }
+      responses:
+        "201":
+          description: The new item.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Item" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+
+  /users/{user_id}/items/{item_id}:
+    parameters:
+      - $ref: "#/components/parameters/UserId"
+      - $ref: "#/components/parameters/ItemId"
+    patch:
+      tags: [Wardrobe]
+      operationId: updateItem
+      summary: Update an item's name, slot or measurements
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ItemPatch" }
+      responses:
+        "200":
+          description: The updated item.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Item" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [Wardrobe]
+      operationId: deleteItem
+      summary: Delete an item
+      responses:
+        "204": { description: Deleted. }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /users/{user_id}/outfits:
+    parameters: [{ $ref: "#/components/parameters/UserId" }]
+    get:
+      tags: [Outfits]
+      operationId: listOutfits
+      summary: List saved outfits
+      responses:
+        "200":
+          description: Outfits.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Outfit" }
+    post:
+      tags: [Outfits]
+      operationId: createOutfit
+      summary: Create an outfit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [state]
+              properties:
+                state: { $ref: "#/components/schemas/OutfitState" }
+                name: { type: string }
+      responses:
+        "201":
+          description: The new outfit, at version 1.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Outfit" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+
+  /users/{user_id}/outfits/{outfit_id}:
+    parameters:
+      - $ref: "#/components/parameters/UserId"
+      - $ref: "#/components/parameters/OutfitId"
+    get:
+      tags: [Outfits]
+      operationId: getOutfit
+      summary: Get an outfit
+      responses:
+        "200":
+          description: The outfit.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Outfit" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [Outfits]
+      operationId: updateOutfit
+      summary: Update outfit state, name or favorite
+      description: |
+        State fields are merged shallowly: each top-level `OutfitState` key that
+        is sent replaces that key. `version` goes up by one when any state field
+        changes. A change to only `name` or `favorite` keeps the same version.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OutfitPatch" }
+      responses:
+        "200":
+          description: The updated outfit.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Outfit" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [Outfits]
+      operationId: deleteOutfit
+      summary: Delete an outfit
+      responses:
+        "204": { description: Deleted. }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /users/{user_id}/outfits/{outfit_id}/edit:
+    parameters:
+      - $ref: "#/components/parameters/UserId"
+      - $ref: "#/components/parameters/OutfitId"
+    post:
+      tags: [Outfits]
+      operationId: editOutfit
+      summary: Apply a free-text edit (for example "tuck in the shirt")
+      description: |
+        The backend parses the message with an LLM. When it does not understand
+        the message, it returns the outfit unchanged (same version) and
+        `change_summary` says so.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message: { type: string, minLength: 1 }
+      responses:
+        "200":
+          description: The resulting outfit and a summary of what changed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [outfit, change_summary]
+                properties:
+                  outfit: { $ref: "#/components/schemas/Outfit" }
+                  change_summary: { type: string }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /users/{user_id}/outfits/{outfit_id}/generate:
+    parameters:
+      - $ref: "#/components/parameters/UserId"
+      - $ref: "#/components/parameters/OutfitId"
+    post:
+      tags: [Generation]
+      operationId: generateOutfit
+      summary: Start a generation job for the outfit's current version
+      description: |
+        Every job generates all three views (front, side and back). When an
+        item has no uploaded photo for a view, that view of the item is
+        generated first. Poll `GET /jobs/{job_id}` until `status` is `done`
+        or `failed`.
+      responses:
+        "202":
+          description: Job accepted.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [job_id]
+                properties:
+                  job_id: { type: string }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /users/{user_id}/outfits/{outfit_id}/jobs:
+    parameters:
+      - $ref: "#/components/parameters/UserId"
+      - $ref: "#/components/parameters/OutfitId"
+    get:
+      tags: [Generation]
+      operationId: listOutfitJobs
+      summary: List generation history for an outfit, newest first
+      responses:
+        "200":
+          description: Jobs, newest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Job" }
+
+  /jobs/{job_id}:
+    parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Generation]
+      operationId: getJob
+      summary: Get a generation job
+      responses:
+        "200":
+          description: The job.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+components:
+  parameters:
+    UserId:
+      name: user_id
+      in: path
+      required: true
+      description: Always `me` in v1.
+      schema: { type: string, example: me }
+    ItemId:
+      name: item_id
+      in: path
+      required: true
+      schema: { type: string }
+    OutfitId:
+      name: outfit_id
+      in: path
+      required: true
+      schema: { type: string }
+
+  responses:
+    ValidationError:
+      description: The request failed validation. Show `error.message` to the user.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
+          example:
+            error: { code: VALIDATION_ERROR, message: Choose a bottom. }
+    NotFound:
+      description: The resource does not exist.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
+          example:
+            error: { code: NOT_FOUND, message: Outfit not found. }
+
+  schemas:
+    Slot:
+      type: string
+      enum: [top, one_piece, bottom, outer, accessory]
+    View:
+      type: string
+      enum: [front, side, back]
+    Layer:
+      type: string
+      enum: [base, outer, accessory]
+    JobStatus:
+      type: string
+      enum: [queued, running, done, failed]
+
+    Timestamp:
+      type: string
+      format: date-time
+      description: ISO 8601, UTC.
+
+    ViewImages:
+      type: object
+      required: [front, side, back]
+      additionalProperties: false
+      properties:
+        front: { type: string, format: uri }
+        side: { type: string, format: uri }
+        back: { type: string, format: uri }
+
+    Measurements:
+      type: object
+      description: |
+        Measurements in cm. Every key is optional, and null means unknown.
+        Body: chest, waist, hip, inseam.
+        Top, outer and one_piece items: chest, waist, shoulder, length.
+        Bottom items: waist, hip, inseam, length.
+      additionalProperties:
+        type: [number, "null"]
+
+    BodyProfile:
+      type: object
+      required: [id, user_id, height_cm, images, measurements, consent_at, updated_at]
+      properties:
+        id: { type: string }
+        user_id: { type: string }
+        height_cm: { type: [number, "null"] }
+        images: { $ref: "#/components/schemas/ViewImages" }
+        measurements: { $ref: "#/components/schemas/Measurements" }
+        consent_at: { $ref: "#/components/schemas/Timestamp" }
+        updated_at: { $ref: "#/components/schemas/Timestamp" }
+
+    DefaultBody:
+      type: object
+      required: [id, name, images]
+      properties:
+        id: { type: string }
+        name: { type: string, example: Default A }
+        images: { $ref: "#/components/schemas/ViewImages" }
+
+    Background:
+      type: object
+      required: [id, name, url, is_preset]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        url: { type: string, format: uri }
+        is_preset:
+          type: boolean
+          description: True for a preset, false for a user upload.
+
+    Item:
+      type: object
+      required: [id, user_id, slot, name, front_url, back_url, measurements, created_at]
+      properties:
+        id: { type: string }
+        user_id: { type: string }
+        slot: { $ref: "#/components/schemas/Slot" }
+        name: { type: string }
+        front_url: { type: string, format: uri }
+        back_url:
+          type: [string, "null"]
+          format: uri
+          description: Null means the back view will be inferred.
+        measurements: { $ref: "#/components/schemas/Measurements" }
+        created_at: { $ref: "#/components/schemas/Timestamp" }
+
+    ItemPatch:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1 }
+        slot: { $ref: "#/components/schemas/Slot" }
+        measurements: { $ref: "#/components/schemas/Measurements" }
+
+    BodyRef:
+      type: object
+      required: [kind, id]
+      properties:
+        kind:
+          type: string
+          enum: [user, default]
+        id:
+          type: string
+          description: A BodyProfile id when kind is `user`, or a DefaultBody id when kind is `default`.
+
+    TopBottomBase:
+      type: object
+      required: [mode, top_id, bottom_id, tucked]
+      properties:
+        mode: { type: string, const: top_bottom }
+        top_id: { type: string }
+        bottom_id:
+          type: [string, "null"]
+          description: Null while a draft is being built. Saving or generating requires a bottom.
+        tucked: { type: boolean }
+
+    OnePieceBase:
+      type: object
+      required: [mode, one_piece_id]
+      properties:
+        mode: { type: string, const: one_piece }
+        one_piece_id: { type: string }
+
+    Base:
+      oneOf:
+        - $ref: "#/components/schemas/TopBottomBase"
+        - $ref: "#/components/schemas/OnePieceBase"
+      discriminator:
+        propertyName: mode
+        mapping:
+          top_bottom: "#/components/schemas/TopBottomBase"
+          one_piece: "#/components/schemas/OnePieceBase"
+
+    OuterSelection:
+      type: object
+      required: [item_id, open]
+      properties:
+        item_id: { type: string }
+        open: { type: boolean, default: false }
+
+    AccessorySelection:
+      type: object
+      required: [item_id]
+      properties:
+        item_id: { type: string }
+
+    OutfitState:
+      type: object
+      description: |
+        Validation rules:
+        - top_bottom mode needs a top and a bottom.
+        - one_piece mode needs a one-piece.
+        - `body` and `background_id` must be set.
+      required: [body, background_id, base, outer, accessory, style_notes]
+      properties:
+        body: { $ref: "#/components/schemas/BodyRef" }
+        background_id: { type: string }
+        base: { $ref: "#/components/schemas/Base" }
+        outer:
+          oneOf:
+            - $ref: "#/components/schemas/OuterSelection"
+            - type: "null"
+        accessory:
+          oneOf:
+            - $ref: "#/components/schemas/AccessorySelection"
+            - type: "null"
+        style_notes:
+          type: object
+          description: Free-text style notes keyed by item_id, for example "sleeves rolled up".
+          additionalProperties: { type: string }
+
+    OutfitPatch:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        name: { type: [string, "null"] }
+        favorite: { type: boolean }
+        body: { $ref: "#/components/schemas/BodyRef" }
+        background_id: { type: string }
+        base: { $ref: "#/components/schemas/Base" }
+        outer:
+          oneOf:
+            - $ref: "#/components/schemas/OuterSelection"
+            - type: "null"
+        accessory:
+          oneOf:
+            - $ref: "#/components/schemas/AccessorySelection"
+            - type: "null"
+        style_notes:
+          type: object
+          additionalProperties: { type: string }
+
+    Outfit:
+      type: object
+      required: [id, user_id, name, favorite, state, version, created_at, updated_at]
+      properties:
+        id: { type: string }
+        user_id: { type: string }
+        name: { type: [string, "null"] }
+        favorite: { type: boolean }
+        state: { $ref: "#/components/schemas/OutfitState" }
+        version:
+          type: integer
+          minimum: 1
+          description: Goes up by one on every state change.
+        created_at: { $ref: "#/components/schemas/Timestamp" }
+        updated_at: { $ref: "#/components/schemas/Timestamp" }
+
+    ViewResult:
+      type: object
+      required: [status, url, inferred_item_ids]
+      properties:
+        status: { $ref: "#/components/schemas/JobStatus" }
+        url:
+          type: [string, "null"]
+          format: uri
+          description: Set once this view is done.
+        inferred_item_ids:
+          type: array
+          items: { type: string }
+          description: |
+            Items whose photo for this view was generated because the user did
+            not upload one. Items never have a side photo, and the back photo is
+            optional.
+
+    LayerReuse:
+      type: object
+      required: [layer, reused]
+      properties:
+        layer: { $ref: "#/components/schemas/Layer" }
+        reused:
+          type: boolean
+          description: True when this layer came from the cache.
+
+    Job:
+      type: object
+      required: [id, outfit_id, outfit_version, status, views, layers, timings_ms, cost_usd, error, created_at]
+      properties:
+        id: { type: string }
+        outfit_id: { type: string }
+        outfit_version:
+          type: integer
+          description: The outfit version this job renders. It can be older than the outfit's current version.
+        status: { $ref: "#/components/schemas/JobStatus" }
+        views:
+          type: object
+          required: [front, side, back]
+          additionalProperties: false
+          properties:
+            front: { $ref: "#/components/schemas/ViewResult" }
+            side: { $ref: "#/components/schemas/ViewResult" }
+            back: { $ref: "#/components/schemas/ViewResult" }
+        layers:
+          type: array
+          items: { $ref: "#/components/schemas/LayerReuse" }
+        timings_ms:
+          type: object
+          required: [total]
+          properties:
+            total: { type: [integer, "null"] }
+        cost_usd: { type: [number, "null"] }
+        error:
+          type: [string, "null"]
+          description: A readable message, set when status is `failed`.
+        created_at: { $ref: "#/components/schemas/Timestamp" }
+
+    ApiError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              examples: [VALIDATION_ERROR, NOT_FOUND]
+            message:
+              type: string
+              description: Safe to show to the user.

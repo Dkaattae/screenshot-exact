@@ -1,9 +1,8 @@
 import {describe,it,expect} from 'vitest';import {validation,editState,reusedLayers} from '@/api/rules';import type {OutfitState} from '@/api/types';
-const state:OutfitState={body:{kind:'default',id:'body'},background_id:'background',base:{mode:'top_bottom',top_id:'top',bottom_id:'bottom',tucked:false},outer:{item_id:'jacket',open:false},accessory:{item_id:'bag'},views:['front','side','back'],style_notes:{}};
+const state:OutfitState={body:{kind:'default',id:'body'},background_id:'background',base:{mode:'top_bottom',top_id:'top',bottom_id:'bottom',tucked:false},outer:{item_id:'jacket',open:false},accessory:{item_id:'bag'},style_notes:{}};
 describe('Outfit rules',()=>{
  it('requires both top and bottom in top mode',()=>expect(validation({...state,base:{mode:'top_bottom',top_id:'',bottom_id:null,tucked:false}})).toEqual(['Choose a top.','Choose a bottom.']));
  it('requires a one-piece without requiring a bottom',()=>{expect(validation({...state,base:{mode:'one_piece',one_piece_id:'dress'}})).toEqual([]);expect(validation({...state,base:{mode:'one_piece',one_piece_id:''}})).toEqual(['Choose a one-piece.']);});
- it('requires at least one view',()=>expect(validation({...state,views:[]})).toEqual(['Select at least one view.']));
  it('requires a chosen body',()=>expect(validation({...state,body:{kind:'default',id:''}})).toEqual(['Choose a body.']));
  it('requires a background',()=>expect(validation({...state,background_id:''})).toEqual(['Choose a background.']));
  it('recognizes tuck and untuck distinctly',()=>{expect(editState(state,'tuck the shirt').state.base).toEqual({...state.base,tucked:true});expect(editState({...state,base:{mode:'top_bottom',top_id:'top',bottom_id:'bottom',tucked:true}},'untuck').state.base).toEqual(state.base);});

@@ -4,7 +4,6 @@ export function validation(state:OutfitState):string[] {
  const errors:string[]=[];
  if(state.base.mode==='top_bottom') {if(!state.base.top_id) errors.push('Choose a top.');if(!state.base.bottom_id) errors.push('Choose a bottom.');}
  else if(!state.base.one_piece_id) errors.push('Choose a one-piece.');
- if(!state.views.length) errors.push('Select at least one view.');
  if(!state.body.id) errors.push('Choose a body.');
  if(!state.background_id) errors.push('Choose a background.');
  return errors;
@@ -17,6 +16,6 @@ export function editState(state:OutfitState,message:string):{state:OutfitState;c
 }
 export function reusedLayers(previous:OutfitState|undefined,next:OutfitState):{layer:Layer;reused:boolean}[] {
  const same=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
- const common=!!previous && same(previous.base,next.base)&&same(previous.body,next.body)&&previous.background_id===next.background_id&&same(previous.views,next.views)&&same(previous.style_notes,next.style_notes);
+ const common=!!previous && same(previous.base,next.base)&&same(previous.body,next.body)&&previous.background_id===next.background_id&&same(previous.style_notes,next.style_notes);
  return [{layer:'base',reused:common},{layer:'outer',reused:common&&same(previous?.outer,next.outer)},{layer:'accessory',reused:common&&same(previous?.outer,next.outer)&&same(previous?.accessory,next.accessory)}];
 }
