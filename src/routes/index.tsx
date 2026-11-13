@@ -1,23 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
-
-// The home route ships no og:image, so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
-export const Route = createFileRoute("/")({
-  component: Index,
-});
-
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
-  );
-}
+import {createFileRoute} from '@tanstack/react-router';
+import {Wardrobe} from '@/features/wardrobe';
+export const Route=createFileRoute('/')({head:()=>({meta:[{title:'thread · Your personal fitting room'},{name:'description',content:'Bring your wardrobe together and explore outfits with a personal virtual fitting room.'},{property:'og:title',content:'thread · Your personal fitting room'},{property:'og:description',content:'Explore the possibilities in the wardrobe you already love.'},{property:'og:type',content:'website'},{name:'twitter:card',content:'summary_large_image'}]}),component:Wardrobe});

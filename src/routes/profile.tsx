@@ -1,0 +1,2 @@
+import {createFileRoute} from '@tanstack/react-router';import {Profile} from '@/features/profile';
+export const Route=createFileRoute('/profile')({head:()=>({meta:[{title:'Your body profile · thread'},{name:'description',content:'Save your body photos and measurements for a more personal fitting.'},{property:'og:title',content:'Your body profile · thread'},{property:'og:description',content:'A personal starting point for every outfit.'},{property:'og:type',content:'website'},{name:'twitter:card',content:'summary_large_image'}]}),component:Profile});
