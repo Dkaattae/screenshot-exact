@@ -10,33 +10,123 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CompareRouteImport } from './routes/compare'
+import { Route as OutfitsRouteImport } from './routes/outfits'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as WardrobeRouteImport } from './routes/wardrobe'
+import { Route as OutfitsIndexRouteImport } from './routes/outfits.index'
+import { Route as OutfitsIdRouteImport } from './routes/outfits.$id'
+import { Route as OutfitsNewRouteImport } from './routes/outfits.new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CompareRoute = CompareRouteImport.update({
+  id: '/compare',
+  path: '/compare',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OutfitsRoute = OutfitsRouteImport.update({
+  id: '/outfits',
+  path: '/outfits',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WardrobeRoute = WardrobeRouteImport.update({
+  id: '/wardrobe',
+  path: '/wardrobe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OutfitsIndexRoute = OutfitsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => OutfitsRoute,
+} as any)
+const OutfitsIdRoute = OutfitsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => OutfitsRoute,
+} as any)
+const OutfitsNewRoute = OutfitsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => OutfitsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/compare': typeof CompareRoute
+  '/outfits': typeof OutfitsRouteWithChildren
+  '/profile': typeof ProfileRoute
+  '/wardrobe': typeof WardrobeRoute
+  '/outfits/$id': typeof OutfitsIdRoute
+  '/outfits/new': typeof OutfitsNewRoute
+  '/outfits/': typeof OutfitsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/compare': typeof CompareRoute
+  '/profile': typeof ProfileRoute
+  '/wardrobe': typeof WardrobeRoute
+  '/outfits/$id': typeof OutfitsIdRoute
+  '/outfits/new': typeof OutfitsNewRoute
+  '/outfits': typeof OutfitsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/compare': typeof CompareRoute
+  '/outfits': typeof OutfitsRouteWithChildren
+  '/profile': typeof ProfileRoute
+  '/wardrobe': typeof WardrobeRoute
+  '/outfits/$id': typeof OutfitsIdRoute
+  '/outfits/new': typeof OutfitsNewRoute
+  '/outfits/': typeof OutfitsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/compare'
+    | '/outfits'
+    | '/profile'
+    | '/wardrobe'
+    | '/outfits/$id'
+    | '/outfits/new'
+    | '/outfits/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/compare'
+    | '/profile'
+    | '/wardrobe'
+    | '/outfits/$id'
+    | '/outfits/new'
+    | '/outfits'
+  id:
+    | '__root__'
+    | '/'
+    | '/compare'
+    | '/outfits'
+    | '/profile'
+    | '/wardrobe'
+    | '/outfits/$id'
+    | '/outfits/new'
+    | '/outfits/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CompareRoute: typeof CompareRoute
+  OutfitsRoute: typeof OutfitsRouteWithChildren
+  ProfileRoute: typeof ProfileRoute
+  WardrobeRoute: typeof WardrobeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +138,79 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/compare': {
+      id: '/compare'
+      path: '/compare'
+      fullPath: '/compare'
+      preLoaderRoute: typeof CompareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/outfits': {
+      id: '/outfits'
+      path: '/outfits'
+      fullPath: '/outfits'
+      preLoaderRoute: typeof OutfitsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wardrobe': {
+      id: '/wardrobe'
+      path: '/wardrobe'
+      fullPath: '/wardrobe'
+      preLoaderRoute: typeof WardrobeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/outfits/': {
+      id: '/outfits/'
+      path: '/'
+      fullPath: '/outfits/'
+      preLoaderRoute: typeof OutfitsIndexRouteImport
+      parentRoute: typeof OutfitsRoute
+    }
+    '/outfits/$id': {
+      id: '/outfits/$id'
+      path: '/$id'
+      fullPath: '/outfits/$id'
+      preLoaderRoute: typeof OutfitsIdRouteImport
+      parentRoute: typeof OutfitsRoute
+    }
+    '/outfits/new': {
+      id: '/outfits/new'
+      path: '/new'
+      fullPath: '/outfits/new'
+      preLoaderRoute: typeof OutfitsNewRouteImport
+      parentRoute: typeof OutfitsRoute
+    }
   }
 }
 
+interface OutfitsRouteChildren {
+  OutfitsIdRoute: typeof OutfitsIdRoute
+  OutfitsNewRoute: typeof OutfitsNewRoute
+  OutfitsIndexRoute: typeof OutfitsIndexRoute
+}
+
+const OutfitsRouteChildren: OutfitsRouteChildren = {
+  OutfitsIdRoute: OutfitsIdRoute,
+  OutfitsNewRoute: OutfitsNewRoute,
+  OutfitsIndexRoute: OutfitsIndexRoute,
+}
+
+const OutfitsRouteWithChildren =
+  OutfitsRoute._addFileChildren(OutfitsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CompareRoute: CompareRoute,
+  OutfitsRoute: OutfitsRouteWithChildren,
+  ProfileRoute: ProfileRoute,
+  WardrobeRoute: WardrobeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
