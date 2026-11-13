@@ -1,2 +1,18 @@
-import {createFileRoute} from '@tanstack/react-router';import {Outfits} from '@/features/outfits';
-export const Route=createFileRoute('/outfits/')({head:()=>({meta:[{title:'Saved outfits · thread'},{name:'description',content:'Browse, favorite and compare your saved outfit combinations.'},{property:'og:title',content:'Saved outfits · thread'},{property:'og:description',content:'Your favorite looks, all in one place.'},{property:'og:type',content:'website'},{name:'twitter:card',content:'summary_large_image'}]}),component:Outfits});
+import { createFileRoute } from "@tanstack/react-router";
+import { Outfits } from "@/features/outfits";
+export const Route = createFileRoute("/outfits/")({
+  head: () => ({
+    meta: [
+      { title: "Saved outfits · thread" },
+      {
+        name: "description",
+        content: "Browse, favorite and compare your saved outfit combinations.",
+      },
+      { property: "og:title", content: "Saved outfits · thread" },
+      { property: "og:description", content: "Your favorite looks, all in one place." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
+  component: Outfits,
+});
