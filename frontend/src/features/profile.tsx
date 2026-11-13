@@ -1,2 +1,193 @@
-import {useState} from 'react';import {useQuery,useMutation,useQueryClient} from '@tanstack/react-query';import {Check,ShieldCheck,Trash2} from 'lucide-react';import {Button} from '@/components/ui/button';import {Input} from '@/components/ui/input';import {api} from '@/api/client';import type {View} from '@/api/types';import {VIEWS} from '@/api/rules';import {bodiesQuery,profileQuery} from './queries';import {Heading,PhotoUpload,Confirm,ResourceImage} from './common';import {toast} from 'sonner';
-export function Profile(){const {data}=useQuery(profileQuery);const {data:bodies=[]}=useQuery(bodiesQuery);const [files,setFiles]=useState<Record<View,File|null>>({front:null,side:null,back:null});const [height,setHeight]=useState('');const [measures,setMeasures]=useState<Record<string,number|null>>({});const [consent,setConsent]=useState(false);const [confirm,setConfirm]=useState(false);const [replace,setReplace]=useState(false);const [defaultId,setDefaultId]=useState('');const client=useQueryClient();const save=useMutation({mutationFn:()=>{const f=new FormData();for(const v of VIEWS){const file=files[v];if(file)f.append(v,file);}f.append('height_cm',height);f.append('measurements',JSON.stringify(measures));f.append('consent',String(consent));return api.saveBody(f);},onSuccess:()=>{client.invalidateQueries({queryKey:['profile']});setReplace(false);toast.success('Your body profile is saved.');},onError:e=>toast.error(e.message)});const del=useMutation({mutationFn:api.deleteBody,onSuccess:()=>{client.invalidateQueries({queryKey:['profile']});setConfirm(false);setFiles({front:null,side:null,back:null});setConsent(false);toast.success('Your body data was deleted.');},onError:e=>toast.error(e.message)});const body=data?.body;return <div className="page-container profile-page"><Heading eyebrow="A FIT THAT FEELS LIKE YOU" title="Your body profile" description="A personal starting point for every outfit."/>{!body&&<section className="profile-default"><h2>A good place to start.</h2><p>A default body is available until you add your own photos.</p><div className="body-options">{bodies.map((b,i)=><Button variant="outline" key={b.id} className={`body-choice ${(defaultId||bodies[0]?.id)===b.id?'selected':''}`} onClick={()=>setDefaultId(b.id)}><ResourceImage src={b.images.front} alt={b.name} resource="bodies"/>{b.name}{(defaultId||bodies[0]?.id)===b.id&&<Check/>}</Button>)}</div></section>}<section className="profile-form"><div className="section-heading"><h2>{body&&!replace?'Your saved photos':'Make it personal.'}</h2>{body&&!replace&&<Button variant="outline" onClick={()=>setReplace(true)}>Replace photos</Button>}</div>{body&&!replace?<><div className="profile-photos">{VIEWS.map(v=><div key={v}><ResourceImage src={body.images[v]} alt={`Your ${v} body photo`} resource="profile"/><h3 className="capitalize">{v}</h3></div>)}</div><p className="mt-5 text-muted-foreground">Height: {body.height_cm?`${body.height_cm} cm`:'Not provided'}</p><Button className="mt-6" variant="destructive" onClick={()=>setConfirm(true)}><Trash2/>Delete my body data</Button></>:<form onSubmit={e=>{e.preventDefault();save.mutate();}}><div className="grid grid-cols-1 sm:grid-cols-3 gap-4">{VIEWS.map(v=><PhotoUpload key={v} label={`${v[0].toUpperCase()+v.slice(1)} photo`} required value={files[v]} onChange={f=>setFiles({...files,[v]:f})}/>)}</div><p className="form-tip mt-4">Fitted clothing, a plain wall, your full body in frame, and good light.</p><div className="profile-measurements"><label className="field-label">Height (cm)<Input type="number" min="1" value={height} onChange={e=>setHeight(e.target.value)} placeholder="e.g. 170"/></label>{['chest','waist','hip','inseam'].map(m=><label className="field-label capitalize" key={m}>{m} (cm)<Input type="number" min="0" placeholder="Unknown" value={measures[m]??''} onChange={e=>setMeasures({...measures,[m]:e.target.value?Number(e.target.value):null})}/></label>)}</div><label className="checkbox-label consent"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/>I consent to my body photos being used only to generate my try-ons.</label><Button disabled={!VIEWS.every(v=>files[v])||!consent||save.isPending}>{save.isPending?'Saving…':'Save body profile'}<Check/></Button></form>}<div className="privacy-note"><ShieldCheck size={19}/><p>Your photos belong to you. You can delete your body data at any time.</p></div></section><Confirm open={confirm} title="Delete all your body data?" onClose={()=>setConfirm(false)} onConfirm={()=>del.mutate()}/></div>;}
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Check, ShieldCheck, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { api } from "@/api/client";
+import type { View } from "@/api/types";
+import { VIEWS } from "@/api/rules";
+import { bodiesQuery, profileQuery } from "./queries";
+import { Heading, PhotoUpload, Confirm, ResourceImage } from "./common";
+import { toast } from "sonner";
+export function Profile() {
+  const { data } = useQuery(profileQuery);
+  const { data: bodies = [] } = useQuery(bodiesQuery);
+  const [files, setFiles] = useState<Record<View, File | null>>({
+    front: null,
+    side: null,
+    back: null,
+  });
+  const [height, setHeight] = useState("");
+  const [measures, setMeasures] = useState<Record<string, number | null>>({});
+  const [consent, setConsent] = useState(false);
+  const [confirm, setConfirm] = useState(false);
+  const [replace, setReplace] = useState(false);
+  const [defaultId, setDefaultId] = useState("");
+  const client = useQueryClient();
+  const save = useMutation({
+    mutationFn: () => {
+      const f = new FormData();
+      for (const v of VIEWS) {
+        const file = files[v];
+        if (file) f.append(v, file);
+      }
+      f.append("height_cm", height);
+      f.append("measurements", JSON.stringify(measures));
+      f.append("consent", String(consent));
+      return api.saveBody(f);
+    },
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ["profile"] });
+      setReplace(false);
+      toast.success("Your body profile is saved.");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const del = useMutation({
+    mutationFn: api.deleteBody,
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ["profile"] });
+      setConfirm(false);
+      setFiles({ front: null, side: null, back: null });
+      setConsent(false);
+      toast.success("Your body data was deleted.");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const body = data?.body;
+  return (
+    <div className="page-container profile-page">
+      <Heading
+        eyebrow="A FIT THAT FEELS LIKE YOU"
+        title="Your body profile"
+        description="A personal starting point for every outfit."
+      />
+      {!body && (
+        <section className="profile-default">
+          <h2>A good place to start.</h2>
+          <p>A default body is available until you add your own photos.</p>
+          <div className="body-options">
+            {bodies.map((b, i) => (
+              <Button
+                variant="outline"
+                key={b.id}
+                className={`body-choice ${(defaultId || bodies[0]?.id) === b.id ? "selected" : ""}`}
+                onClick={() => setDefaultId(b.id)}
+              >
+                <ResourceImage src={b.images.front} alt={b.name} resource="bodies" />
+                {b.name}
+                {(defaultId || bodies[0]?.id) === b.id && <Check />}
+              </Button>
+            ))}
+          </div>
+        </section>
+      )}
+      <section className="profile-form">
+        <div className="section-heading">
+          <h2>{body && !replace ? "Your saved photos" : "Make it personal."}</h2>
+          {body && !replace && (
+            <Button variant="outline" onClick={() => setReplace(true)}>
+              Replace photos
+            </Button>
+          )}
+        </div>
+        {body && !replace ? (
+          <>
+            <div className="profile-photos">
+              {VIEWS.map((v) => (
+                <div key={v}>
+                  <ResourceImage
+                    src={body.images[v]}
+                    alt={`Your ${v} body photo`}
+                    resource="profile"
+                  />
+                  <h3 className="capitalize">{v}</h3>
+                </div>
+              ))}
+            </div>
+            <p className="mt-5 text-muted-foreground">
+              Height: {body.height_cm ? `${body.height_cm} cm` : "Not provided"}
+            </p>
+            <Button className="mt-6" variant="destructive" onClick={() => setConfirm(true)}>
+              <Trash2 />
+              Delete my body data
+            </Button>
+          </>
+        ) : (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              save.mutate();
+            }}
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {VIEWS.map((v) => (
+                <PhotoUpload
+                  key={v}
+                  label={`${v[0].toUpperCase() + v.slice(1)} photo`}
+                  required
+                  value={files[v]}
+                  onChange={(f) => setFiles({ ...files, [v]: f })}
+                />
+              ))}
+            </div>
+            <p className="form-tip mt-4">
+              Fitted clothing, a plain wall, your full body in frame, and good light.
+            </p>
+            <div className="profile-measurements">
+              <label className="field-label">
+                Height (cm)
+                <Input
+                  type="number"
+                  min="1"
+                  value={height}
+                  onChange={(e) => setHeight(e.target.value)}
+                  placeholder="e.g. 170"
+                />
+              </label>
+              {["chest", "waist", "hip", "inseam"].map((m) => (
+                <label className="field-label capitalize" key={m}>
+                  {m} (cm)
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder="Unknown"
+                    value={measures[m] ?? ""}
+                    onChange={(e) =>
+                      setMeasures({
+                        ...measures,
+                        [m]: e.target.value ? Number(e.target.value) : null,
+                      })
+                    }
+                  />
+                </label>
+              ))}
+            </div>
+            <label className="checkbox-label consent">
+              <input
+                type="checkbox"
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+              />
+              I consent to my body photos being used only to generate my try-ons.
+            </label>
+            <Button disabled={!VIEWS.every((v) => files[v]) || !consent || save.isPending}>
+              {save.isPending ? "Saving…" : "Save body profile"}
+              <Check />
+            </Button>
+          </form>
+        )}
+        <div className="privacy-note">
+          <ShieldCheck size={19} />
+          <p>Your photos belong to you. You can delete your body data at any time.</p>
+        </div>
+      </section>
+      <Confirm
+        open={confirm}
+        title="Delete all your body data?"
+        onClose={() => setConfirm(false)}
+        onConfirm={() => del.mutate()}
+      />
+    </div>
+  );
+}

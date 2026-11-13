@@ -1,3 +1,22 @@
-import {createFileRoute} from '@tanstack/react-router';import {Results} from '@/features/results';
-export const Route=createFileRoute('/outfits/$id')({head:()=>({meta:[{title:'Your try-on results · thread'},{name:'description',content:'See your outfit from every angle, refine the styling and explore each iteration.'},{property:'og:title',content:'Your try-on results · thread'},{property:'og:description',content:'A whole new perspective on your next look.'},{property:'og:type',content:'website'},{name:'twitter:card',content:'summary_large_image'}]}),component:Detail});
-function Detail(){const {id}=Route.useParams();return <Results id={id}/>;}
+import { createFileRoute } from "@tanstack/react-router";
+import { Results } from "@/features/results";
+export const Route = createFileRoute("/outfits/$id")({
+  head: () => ({
+    meta: [
+      { title: "Your try-on results · thread" },
+      {
+        name: "description",
+        content: "See your outfit from every angle, refine the styling and explore each iteration.",
+      },
+      { property: "og:title", content: "Your try-on results · thread" },
+      { property: "og:description", content: "A whole new perspective on your next look." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
+  component: Detail,
+});
+function Detail() {
+  const { id } = Route.useParams();
+  return <Results id={id} />;
+}
