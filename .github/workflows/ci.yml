@@ -51,6 +51,6 @@ jobs:
       - name: Lint
         run: uv run ruff check .
       - name: Format
-        run: uv run ruff format --check .
+        run: uv run ruff format --diff .
       - name: Test
         run: uv run pytest
