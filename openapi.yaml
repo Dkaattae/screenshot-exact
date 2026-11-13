@@ -3,8 +3,8 @@ info:
   title: Virtual Try-On API
   version: 1.0.0
   description: |
-    Contract for the Virtual Try-On app (v1 shell). The frontend's MSW mock
-    implements this contract, and the FastAPI backend will replace it.
+    Contract for the Virtual Try-On app. The frontend's MSW mock and the
+    FastAPI backend in backend/ both implement it.
 
     Conventions:
     - IDs are opaque strings. Clients must never parse or construct them.
@@ -12,8 +12,13 @@ info:
     - Image URLs may be signed and may expire. Always use the URLs from the
       latest response. If an image fails to load, refetch the parent resource once.
     - Every error response uses the `ApiError` shape.
-    - v1 has a single user and no auth. The user is `me`. User-scoped paths
-      include `/users/{user_id}/` so that auth can be added later.
+    - Auth: sign up or sign in with `/auth/register` or `/auth/login` to get an
+      access token, then send `Authorization: Bearer <token>` on every other
+      request. Only `/auth/register`, `/auth/login` and `/bodies/defaults` are
+      public. A missing, invalid or expired token gets 401 `UNAUTHORIZED`.
+    - In `/users/{user_id}/` paths, `user_id` is `me` or the signed-in user's own
+      id. Any other id gets 403 `FORBIDDEN`. Another user's outfits, items and
+      jobs read as 404 `NOT_FOUND`.
     - List endpoints return plain arrays in v1. They may later return
       `{ items, next_cursor }`. The frontend client already accepts both.
 servers:
@@ -23,7 +28,11 @@ servers:
       baseUrl:
         default: /api/mock
 
+security:
+  - bearerAuth: []
+
 tags:
+  - name: Auth
   - name: Profile
   - name: Backgrounds
   - name: Wardrobe
@@ -31,6 +40,63 @@ tags:
   - name: Generation
 
 paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      operationId: register
+      summary: Create an account and sign in
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterRequest" }
+      responses:
+        "201":
+          description: The new account and an access token.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "409":
+          description: An account with this email already exists.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Sign in with email and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "200":
+          description: The account and an access token.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      operationId: getCurrentUser
+      summary: Get the signed-in user
+      responses:
+        "200":
+          description: The signed-in user.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
   /users/{user_id}/profile:
     parameters: [{ $ref: "#/components/parameters/UserId" }]
     get:
@@ -102,6 +168,7 @@ paths:
       tags: [Profile]
       operationId: listDefaultBodies
       summary: List the default bodies used when the user has no profile
+      security: []
       responses:
         "200":
           description: Default bodies.
@@ -404,12 +471,18 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   parameters:
     UserId:
       name: user_id
       in: path
       required: true
-      description: Always `me` in v1.
+      description: "`me`, or the signed-in user's own id."
       schema: { type: string, example: me }
     ItemId:
       name: item_id
@@ -430,6 +503,13 @@ components:
           schema: { $ref: "#/components/schemas/ApiError" }
           example:
             error: { code: VALIDATION_ERROR, message: Choose a bottom. }
+    Unauthorized:
+      description: The token is missing, invalid or expired, or the sign-in failed.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
+          example:
+            error: { code: UNAUTHORIZED, message: Sign in to continue. }
     NotFound:
       description: The resource does not exist.
       content:
@@ -439,6 +519,43 @@ components:
             error: { code: NOT_FOUND, message: Outfit not found. }
 
   schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      additionalProperties: false
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8, maxLength: 128 }
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      additionalProperties: false
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, maxLength: 128 }
+
+    User:
+      type: object
+      required: [id, email, created_at]
+      properties:
+        id: { type: string }
+        email:
+          type: string
+          format: email
+          description: Stored in lowercase.
+        created_at: { $ref: "#/components/schemas/Timestamp" }
+
+    TokenResponse:
+      type: object
+      required: [access_token, token_type, user]
+      properties:
+        access_token:
+          type: string
+          description: "Send as `Authorization: Bearer <access_token>`. Expires after 7 days by default."
+        token_type: { type: string, const: bearer }
+        user: { $ref: "#/components/schemas/User" }
+
     Slot:
       type: string
       enum: [top, one_piece, bottom, outer, accessory]
@@ -715,7 +832,7 @@ components:
           properties:
             code:
               type: string
-              examples: [VALIDATION_ERROR, NOT_FOUND]
+              examples: [VALIDATION_ERROR, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, CONFLICT]
             message:
               type: string
               description: Safe to show to the user.
