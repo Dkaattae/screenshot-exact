@@ -1,0 +1,43 @@
+# docker compose up --build, then open http://localhost:8000 (API docs: /api/docs).
+services:
+  app:
+    build:
+      context: .
+      args:
+        VITE_USE_MOCKS: "true"
+    ports:
+      - "8000:8000"
+    environment:
+      TRYON_ENVIRONMENT: ${TRYON_ENVIRONMENT:-development}
+      # Passed through from your shell or .env when set; the dev default applies otherwise.
+      TRYON_SECRET_KEY:
+      TRYON_DATABASE_URL: postgresql+psycopg://tryon:tryon@db:5432/tryon
+      TRYON_PUBLIC_BASE_URL: http://localhost:8000/api
+    volumes:
+      - files:/app/data/files
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: tryon
+      POSTGRES_PASSWORD: tryon
+      POSTGRES_DB: tryon
+    ports:
+      # Published for local tools (psql, pytest against Postgres). 5433 avoids a local 5432.
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tryon -d tryon"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  files:

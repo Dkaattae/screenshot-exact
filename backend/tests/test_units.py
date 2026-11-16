@@ -18,6 +18,11 @@ class TestSettings:
             Settings(environment="production", secret_key=DEV_SECRET).check()
         Settings(environment="production", secret_key="x" * 32).check()
 
+    def test_empty_secret_is_refused_in_every_environment(self):
+        for environment in ("development", "production"):
+            with pytest.raises(RuntimeError, match="empty"):
+                Settings(environment=environment, secret_key="").check()
+
 
 class TestPasswords:
     def test_hash_is_salted_and_verifies(self):

@@ -9,10 +9,16 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+// SPA_BUILD=1 builds static files only (dist/client, with _shell.html as the page for every
+// route) for the backend to serve. The default build is unchanged.
+const spa = process.env.SPA_BUILD === "1";
+
 export default defineConfig({
+  ...(spa ? { nitro: false as const } : {}),
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
     server: { entry: "server" },
+    ...(spa ? { spa: { enabled: true } } : {}),
   },
 });

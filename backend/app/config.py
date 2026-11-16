@@ -24,7 +24,12 @@ class Settings(BaseSettings):
         "http://localhost:8080",
     ]
     max_upload_bytes: int = 15 * 1024 * 1024
+    # Built frontend (frontend/dist/client). When set, create_site serves it at / and the API
+    # at /api.
+    frontend_dir: str | None = None
 
     def check(self) -> None:
+        if not self.secret_key:
+            raise RuntimeError("TRYON_SECRET_KEY is set but empty. Unset it or give it a value.")
         if self.environment != "development" and self.secret_key == DEV_SECRET:
             raise RuntimeError("Set TRYON_SECRET_KEY outside development.")

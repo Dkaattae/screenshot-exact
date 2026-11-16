@@ -1,4 +1,8 @@
-"""App factory. Run with: uv run uvicorn app.main:create_app --factory --reload"""
+"""App factories.
+
+API only: uv run uvicorn app.main:create_app --factory --reload
+API at /api plus the built frontend at /: uv run uvicorn app.main:create_site --factory
+"""
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,6 +14,7 @@ from app.errors import install_error_handlers
 from app.routers import auth, backgrounds, files, items, jobs, outfits, profile
 from app.seed import seed
 from app.storage import LocalStorage
+from app.web import SinglePageApp
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -45,3 +50,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     for module in (auth, profile, backgrounds, items, outfits, jobs, files):
         app.include_router(module.router)
     return app
+
+
+def create_site(settings: Settings | None = None) -> FastAPI:
+    """The API under /api and, when TRYON_FRONTEND_DIR is set, the frontend at /.
+
+    Set TRYON_PUBLIC_BASE_URL to end in /api so signed image URLs point at the API.
+    """
+    settings = settings or Settings()
+    site = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+    site.mount("/api", create_app(settings))
+    if settings.frontend_dir:
+        site.mount("/", SinglePageApp(settings.frontend_dir))
+    return site

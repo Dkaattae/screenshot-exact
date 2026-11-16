@@ -1,9 +1,11 @@
+import os
 from collections.abc import Iterator
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.config import Settings
+from app.db import Base, make_engine
 from app.main import create_app
 
 JPEG = b"\xff\xd8\xff\xe0" + b"\x00" * 64
@@ -14,14 +16,23 @@ def jpeg(name: str = "photo.jpg") -> tuple[str, bytes, str]:
     return (name, JPEG, "image/jpeg")
 
 
+# Set to a Postgres URL to run the suite against Postgres. Every table is dropped after
+# each test, so never point it at a database whose data you want to keep.
+TEST_DATABASE_URL = os.environ.get("TRYON_TEST_DATABASE_URL")
+
+
 @pytest.fixture
-def settings(tmp_path) -> Settings:
-    return Settings(
-        database_url=f"sqlite:///{tmp_path}/test.db",
+def settings(tmp_path) -> Iterator[Settings]:
+    yield Settings(
+        database_url=TEST_DATABASE_URL or f"sqlite:///{tmp_path}/test.db",
         storage_dir=str(tmp_path / "files"),
         secret_key="test-secret-that-is-at-least-32-bytes-long",
         public_base_url="http://testserver",
     )
+    if TEST_DATABASE_URL:
+        engine = make_engine(TEST_DATABASE_URL)
+        Base.metadata.drop_all(engine)
+        engine.dispose()
 
 
 @pytest.fixture
