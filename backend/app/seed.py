@@ -5,7 +5,7 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 
 from app.models import Background, DefaultBody
-from app.storage import LocalStorage
+from app.storage import SHARED, FallbackStorage
 
 ASSETS = Path(__file__).parent / "seed_assets"
 
@@ -23,10 +23,11 @@ def _solid_svg(color: str) -> bytes:
     ).encode()
 
 
-def seed(db: Session, storage: LocalStorage) -> None:
+def seed(db: Session, storage: FallbackStorage) -> None:
+    folder = storage.input_folder(SHARED)
     if db.query(DefaultBody).count() == 0:
         keys = {
-            view: storage.save((ASSETS / f"body-{view}.jpg").read_bytes(), ".jpg", prefix="seed-")
+            view: folder.save((ASSETS / f"body-{view}.jpg").read_bytes(), ".jpg", prefix="seed-")
             for view in ("front", "side", "back")
         }
         for name in ("Default A", "Default B"):
@@ -37,6 +38,6 @@ def seed(db: Session, storage: LocalStorage) -> None:
             )
     if db.query(Background).filter_by(is_preset=True).count() == 0:
         for name, color in PRESET_BACKGROUNDS:
-            key = storage.save(_solid_svg(color), ".svg", prefix="seed-")
+            key = folder.save(_solid_svg(color), ".svg", prefix="seed-")
             db.add(Background(name=name, key=key, is_preset=True))
     db.commit()

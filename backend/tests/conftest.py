@@ -1,12 +1,15 @@
 import os
+import uuid
 from collections.abc import Iterator
 
 import pytest
+from botocore.exceptions import BotoCoreError
 from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.db import Base, make_engine
 from app.main import create_app
+from app.storage import S3Storage
 
 JPEG = b"\xff\xd8\xff\xe0" + b"\x00" * 64
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
@@ -14,6 +17,48 @@ PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
 
 def jpeg(name: str = "photo.jpg") -> tuple[str, bytes, str]:
     return (name, JPEG, "image/jpeg")
+
+
+# S3 tests run against LocalStack: `docker compose up -d localstack`. Without it they are
+# skipped, unless TRYON_TEST_REQUIRE_S3=1 (as in CI), which makes them fail instead.
+LOCALSTACK_ENDPOINT = os.environ.get("TRYON_TEST_S3_ENDPOINT", "http://localhost:4566")
+REQUIRE_S3 = os.environ.get("TRYON_TEST_REQUIRE_S3") == "1"
+# Nothing listens on port 9 (discard), so connecting fails at once.
+UNREACHABLE_ENDPOINT = "http://127.0.0.1:9"
+
+
+def unreachable_s3() -> S3Storage:
+    return S3Storage.connect(
+        "tryon",
+        60,
+        endpoint_url=UNREACHABLE_ENDPOINT,
+        region="us-east-1",
+        access_key_id="test",
+        secret_access_key="test",
+    )
+
+
+@pytest.fixture
+def localstack_s3() -> Iterator[S3Storage]:
+    """A fresh, empty LocalStack bucket per test, deleted afterwards."""
+    store = S3Storage.connect(
+        f"tryon-test-{uuid.uuid4().hex[:12]}",
+        60,
+        endpoint_url=LOCALSTACK_ENDPOINT,
+        region="us-east-1",
+        access_key_id="test",
+        secret_access_key="test",
+    )
+    try:
+        store._client.create_bucket(Bucket=store.bucket)
+    except BotoCoreError as exc:
+        if REQUIRE_S3:
+            raise
+        pytest.skip(f"LocalStack is not running at {LOCALSTACK_ENDPOINT}: {exc}")
+    yield store
+    listed = store._client.list_objects_v2(Bucket=store.bucket).get("Contents", [])
+    store.delete(*(entry["Key"] for entry in listed))
+    store._client.delete_bucket(Bucket=store.bucket)
 
 
 # Set to a Postgres URL to run the suite against Postgres. Every table is dropped after

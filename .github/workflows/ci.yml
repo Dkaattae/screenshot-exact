@@ -38,6 +38,16 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      localstack:
+        image: localstack/localstack:4.9
+        env:
+          SERVICES: s3
+        ports:
+          - 4566:4566
+    env:
+      # Fail, not skip, when LocalStack is unreachable.
+      TRYON_TEST_REQUIRE_S3: "1"
     defaults:
       run:
         working-directory: backend
@@ -52,5 +62,12 @@ jobs:
         run: uv run ruff check .
       - name: Format
         run: uv run ruff format --diff .
+      - name: Wait for LocalStack
+        run: |
+          for _ in $(seq 60); do
+            curl -sf http://localhost:4566/_localstack/health | grep -q '"s3": "\(available\|running\)"' && exit 0
+            sleep 2
+          done
+          exit 1
       - name: Test
         run: uv run pytest

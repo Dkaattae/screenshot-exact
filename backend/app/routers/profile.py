@@ -39,7 +39,8 @@ def save_body(
         view: read_image(upload, view, settings.max_upload_bytes)
         for view, upload in (("front", front), ("side", side), ("back", back))
     }
-    keys = {view: storage.save(data, ext, prefix="body-") for view, (data, ext) in images.items()}
+    folder = storage.input_folder(user.id)
+    keys = {view: folder.save(data, ext, prefix="body-") for view, (data, ext) in images.items()}
 
     profile = db.query(BodyProfile).filter_by(user_id=user.id).one_or_none()
     old_keys = (profile.front_key, profile.side_key, profile.back_key) if profile else ()

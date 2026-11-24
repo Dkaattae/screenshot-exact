@@ -1,7 +1,17 @@
 import time
 from urllib.parse import parse_qs, urlparse
 
-from tests.conftest import JPEG, add_item
+import httpx
+from fastapi.testclient import TestClient
+
+from app.main import create_app
+from tests.conftest import (
+    JPEG,
+    LOCALSTACK_ENDPOINT,
+    UNREACHABLE_ENDPOINT,
+    add_item,
+    register,
+)
 
 
 def path_of(url: str) -> str:
@@ -48,3 +58,43 @@ def test_path_traversal_is_rejected(client):
 def test_urls_are_absolute(auth, client):
     item = add_item(client, auth, "top", "Shirt")
     assert item["front_url"].startswith("http://testserver/files/")
+
+
+def test_video_is_served_as_mp4(client):
+    storage = client.app.state.storage
+    key = storage.output_folder("u1").save(b"\x00\x00\x00\x18ftypmp42", ".mp4", prefix="job-")
+    response = client.get(path_of(storage.url(key)))
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "video/mp4"
+
+
+def test_app_stores_uploads_in_s3_and_serves_presigned_urls(settings, localstack_s3):
+    s3_settings = settings.model_copy(
+        update={
+            "s3_bucket": localstack_s3.bucket,
+            "s3_endpoint_url": LOCALSTACK_ENDPOINT,
+            "s3_region": "us-east-1",
+            "s3_access_key_id": "test",
+            "s3_secret_access_key": "test",
+        }
+    )
+    with TestClient(create_app(s3_settings)) as s3_client:
+        item = add_item(s3_client, register(s3_client), "top", "Shirt")
+        assert item["front_url"].startswith(f"{LOCALSTACK_ENDPOINT}/{localstack_s3.bucket}/inputs/")
+        assert httpx.get(item["front_url"]).content == JPEG
+
+
+def test_app_falls_back_to_local_disk_when_s3_is_unreachable(settings):
+    down = settings.model_copy(
+        update={
+            "s3_bucket": "tryon",
+            "s3_endpoint_url": UNREACHABLE_ENDPOINT,
+            "s3_region": "us-east-1",
+            "s3_access_key_id": "test",
+            "s3_secret_access_key": "test",
+        }
+    )
+    with TestClient(create_app(down)) as down_client:
+        item = add_item(down_client, register(down_client), "top", "Shirt")
+        assert item["front_url"].startswith("http://testserver/files/inputs/")
+        assert down_client.get(path_of(item["front_url"])).content == JPEG
