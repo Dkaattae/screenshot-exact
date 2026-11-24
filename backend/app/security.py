@@ -13,7 +13,7 @@ from app.config import Settings
 from app.db import get_db
 from app.errors import forbidden, unauthorized
 from app.models import User
-from app.storage import LocalStorage
+from app.storage import FallbackStorage
 
 ALGORITHM = "HS256"
 
@@ -48,13 +48,13 @@ def get_settings(request: Request) -> Settings:
     return request.app.state.settings
 
 
-def get_storage(request: Request) -> LocalStorage:
+def get_storage(request: Request) -> FallbackStorage:
     return request.app.state.storage
 
 
 DbSession = Annotated[Session, Depends(get_db)]
 AppSettings = Annotated[Settings, Depends(get_settings)]
-Storage = Annotated[LocalStorage, Depends(get_storage)]
+Storage = Annotated[FallbackStorage, Depends(get_storage)]
 
 
 def current_user(

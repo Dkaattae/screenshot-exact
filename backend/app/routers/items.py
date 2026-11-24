@@ -47,12 +47,13 @@ def create_item(
     parsed = parse_measurements(measurements)
     front_data, front_ext = read_image(front, "front", settings.max_upload_bytes)
     back_image = read_image(back, "back", settings.max_upload_bytes) if has_file(back) else None
+    folder = storage.input_folder(user.id)
     item = Item(
         user_id=user.id,
         slot=slot,
         name=name.strip(),
-        front_key=storage.save(front_data, front_ext, prefix="item-"),
-        back_key=storage.save(*back_image, prefix="item-") if back_image else None,
+        front_key=folder.save(front_data, front_ext, prefix="item-"),
+        back_key=folder.save(*back_image, prefix="item-") if back_image else None,
         measurements=parsed,
     )
     db.add(item)

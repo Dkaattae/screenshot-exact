@@ -36,7 +36,7 @@ def upload_background(
     background = Background(
         user_id=user.id,
         name=name.strip() or "My background",
-        key=storage.save(data, extension, prefix="background-"),
+        key=storage.input_folder(user.id).save(data, extension, prefix="background-"),
         is_preset=False,
     )
     db.add(background)

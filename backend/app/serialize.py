@@ -13,7 +13,7 @@ from app.schemas import (
     UserOut,
     ViewImages,
 )
-from app.storage import LocalStorage
+from app.storage import FallbackStorage
 
 
 def utc(value: datetime) -> datetime:
@@ -25,7 +25,7 @@ def user_out(user: User) -> UserOut:
     return UserOut(id=user.id, email=user.email, created_at=utc(user.created_at))
 
 
-def _images(source: BodyProfile | DefaultBody, storage: LocalStorage) -> ViewImages:
+def _images(source: BodyProfile | DefaultBody, storage: FallbackStorage) -> ViewImages:
     return ViewImages(
         front=storage.url(source.front_key),
         side=storage.url(source.side_key),
@@ -33,7 +33,7 @@ def _images(source: BodyProfile | DefaultBody, storage: LocalStorage) -> ViewIma
     )
 
 
-def body_out(profile: BodyProfile, storage: LocalStorage) -> BodyProfileOut:
+def body_out(profile: BodyProfile, storage: FallbackStorage) -> BodyProfileOut:
     return BodyProfileOut(
         id=profile.id,
         user_id=profile.user_id,
@@ -45,11 +45,11 @@ def body_out(profile: BodyProfile, storage: LocalStorage) -> BodyProfileOut:
     )
 
 
-def default_body_out(body: DefaultBody, storage: LocalStorage) -> DefaultBodyOut:
+def default_body_out(body: DefaultBody, storage: FallbackStorage) -> DefaultBodyOut:
     return DefaultBodyOut(id=body.id, name=body.name, images=_images(body, storage))
 
 
-def background_out(background: Background, storage: LocalStorage) -> BackgroundOut:
+def background_out(background: Background, storage: FallbackStorage) -> BackgroundOut:
     return BackgroundOut(
         id=background.id,
         name=background.name,
@@ -58,7 +58,7 @@ def background_out(background: Background, storage: LocalStorage) -> BackgroundO
     )
 
 
-def item_out(item: Item, storage: LocalStorage) -> ItemOut:
+def item_out(item: Item, storage: FallbackStorage) -> ItemOut:
     return ItemOut(
         id=item.id,
         user_id=item.user_id,
@@ -86,7 +86,7 @@ def outfit_out(outfit: Outfit) -> OutfitOut:
     )
 
 
-def job_out(job: Job, storage: LocalStorage) -> JobOut:
+def job_out(job: Job, storage: FallbackStorage) -> JobOut:
     views = {
         view: {
             "status": result["status"],

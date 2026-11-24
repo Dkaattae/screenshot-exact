@@ -38,6 +38,15 @@ services:
       retries: 30
     restart: unless-stopped
 
+  # S3 emulator for development and tests: docker compose --profile s3 up -d localstack
+  localstack:
+    image: localstack/localstack:4.9
+    profiles: [s3]
+    environment:
+      SERVICES: s3
+    ports:
+      - "127.0.0.1:4566:4566"
+
 volumes:
   pgdata:
   files:

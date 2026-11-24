@@ -13,7 +13,7 @@ from app.db import Base, make_engine
 from app.errors import install_error_handlers
 from app.routers import auth, backgrounds, files, items, jobs, outfits, profile
 from app.seed import seed
-from app.storage import LocalStorage
+from app.storage import make_storage
 from app.web import SinglePageApp
 
 
@@ -26,12 +26,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # under real data.
     Base.metadata.create_all(engine)
     make_session = sessionmaker(engine, expire_on_commit=False)
-    storage = LocalStorage(
-        settings.storage_dir,
-        settings.secret_key,
-        settings.public_base_url,
-        settings.file_url_ttl_seconds,
-    )
+    storage = make_storage(settings)
     with make_session() as db:
         seed(db, storage)
 

@@ -14,7 +14,7 @@ from tests.conftest import add_item, jpeg, register
 
 
 def stored_file(settings, url: str) -> Path:
-    return Path(settings.storage_dir) / urlparse(url).path.rsplit("/", 1)[1]
+    return Path(settings.storage_dir) / urlparse(url).path.split("/files/", 1)[1]
 
 
 def generate(client, auth, outfit_id):
